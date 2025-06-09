@@ -42,7 +42,10 @@ typedef struct
 } BaseDatos;
 
 //* Fuctions
+// Get Fields
+//> Funcion para capturar los campos de la tabla, se capturara el nombre, longitud y tipo de cada campo y se agregara a la tabla posteriormente.
 // Add Table
+//> Falta agregar el aparatado de campos para la tabla: nombre de cada campo, longitud de cada campot y y tipo de cada campo.
 void agregarTabla(BaseDatos **base, char *nombreTabla)
 {
 	if (*base == NULL)
@@ -54,9 +57,14 @@ void agregarTabla(BaseDatos **base, char *nombreTabla)
 
 	Tabla *nuevaTabla = (Tabla *)malloc(sizeof(Tabla));
 	strcpy(nuevaTabla->nombre, nombreTabla);
-	nuevaTabla->campos = NULL;
+
+	printf("\nIngrese el numero de campos para la tabla '%s': ", nombreTabla);
+	int numCampos;
+	scanf("%d", &numCampos);
+	nuevaTabla->campos = (Campo *)malloc(numCampos * sizeof(Campo));
+	nuevaTabla->numCampos = numCampos;
+
 	nuevaTabla->registros = NULL;
-	nuevaTabla->numCampos = 0;
 	nuevaTabla->numRegistros = 0;
 	nuevaTabla->siguiente = (*base)->tablas;
 
@@ -84,6 +92,7 @@ Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla)
 }
 
 // Show Tables
+//> Falta agregar el aparatado de campos mostrar la tabla, mostrara el formato que tiene viendose como una talba mostrando nombre del campo, logitud y tipo de dato, checar el formato esta imprimiendo algo extraño.
 void mostrarTabla(BaseDatos *base, char *nombreTabla)
 {
 	Tabla *tabla = buscarTablaEnBd(base, nombreTabla);
@@ -94,7 +103,7 @@ void mostrarTabla(BaseDatos *base, char *nombreTabla)
 	}
 
 	printf("Tabla: %s\n", tabla->nombre);
-	printf("Campos:\n");
+	printf("Campos: %d\n", tabla->numCampos);
 	Campo *campoActual = tabla->campos;
 	while (campoActual != NULL)
 	{
@@ -106,7 +115,7 @@ void mostrarTabla(BaseDatos *base, char *nombreTabla)
 		campoActual = campoActual->siguiente;
 	}
 
-	printf("Registros:\n");
+	printf("Registros: %d\n", tabla->numRegistros);
 	Registro *registroActual = tabla->registros;
 	while (registroActual != NULL)
 	{

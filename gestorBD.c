@@ -43,9 +43,47 @@ typedef struct
 
 //* Fuctions
 // Get Fields
-//> Funcion para capturar los campos de la tabla, se capturara el nombre, longitud y tipo de cada campo y se agregara a la tabla posteriormente.
+void agregarCampos(BaseDatos **base, Tabla *tabla)
+{
+	if (tabla == NULL)
+	{
+		printf("Tabla no encontrada.\n");
+		return;
+	}
+
+	for (int i = 0; i < tabla->numCampos; i++)
+	{
+		tabla->campos[i].nombre = (char *)malloc(50 * sizeof(char));
+		printf("Ingrese el nombre del campo %d: ", i + 1);
+		scanf("%s", tabla->campos[i].nombre);
+
+		printf("Ingrese la longitud del campo %d: ", i + 1);
+		scanf("%d", &tabla->campos[i].longitud);
+
+		int tipo;
+		printf("Ingrese el tipo de dato del campo %d (0 para ENTERO, 1 para VARCHAR): ", i + 1);
+		scanf("%d", &tipo);
+
+		if (tipo < 0 || tipo > 1) // Validar tipo de dato (Opcional)
+		{
+			printf("Tipo de dato invalido. Asignando VARCHAR por defecto.\n");
+			tipo = 1; // Asignar VARCHAR por defecto si el tipo es invalido
+		}
+
+		tabla->campos[i].tipo = (tipo == 0) ? ENTERO : VARCHAR;
+
+		if (i < tabla->numCampos - 1)
+		{
+			tabla->campos[i].siguiente = &tabla->campos[i + 1];
+		}
+		else
+		{
+			tabla->campos[i].siguiente = NULL; // El ultimo campo no apunta a otro
+		}
+	}
+}
+
 // Add Table
-//> Falta agregar el aparatado de campos para la tabla: nombre de cada campo, longitud de cada campot y y tipo de cada campo.
 void agregarTabla(BaseDatos **base, char *nombreTabla)
 {
 	if (*base == NULL)
@@ -61,8 +99,16 @@ void agregarTabla(BaseDatos **base, char *nombreTabla)
 	printf("\nIngrese el numero de campos para la tabla '%s': ", nombreTabla);
 	int numCampos;
 	scanf("%d", &numCampos);
-	nuevaTabla->campos = (Campo *)malloc(numCampos * sizeof(Campo));
+	if (numCampos <= 0)
+	{
+		printf("El numero de campos debe ser mayor que 0.\n");
+		free(nuevaTabla);
+		return;
+	}
 	nuevaTabla->numCampos = numCampos;
+
+	nuevaTabla->campos = (Campo *)malloc(numCampos * sizeof(Campo));
+	agregarCampos(base, nuevaTabla);
 
 	nuevaTabla->registros = NULL;
 	nuevaTabla->numRegistros = 0;
@@ -71,6 +117,7 @@ void agregarTabla(BaseDatos **base, char *nombreTabla)
 	(*base)->tablas = nuevaTabla;
 	(*base)->numTablas++;
 };
+
 // Search Table
 Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla)
 {
@@ -91,8 +138,35 @@ Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla)
 	return NULL;
 }
 
+// Show Fields
+void mostrarCampos(Tabla *tabla)
+{
+	if (tabla == NULL)
+	{
+		printf("Tabla no encontrada.\n");
+		return;
+	}
+
+	printf("Numero de campos de la tabla '%s': %d\n", tabla->nombre, tabla->numCampos);
+	printf("Campos de la tabla '%s':\n", tabla->nombre);
+	Campo *campoActual = tabla->campos;
+	while (campoActual != NULL)
+	{
+		printf(" - %s (%d) ", campoActual->nombre, campoActual->longitud);
+		if (campoActual->tipo == ENTERO)
+		{
+			printf("[ENTERO]\n");
+		}
+		else if (campoActual->tipo == VARCHAR)
+		{
+			printf("[VARCHAR]\n");
+		}
+		campoActual = campoActual->siguiente;
+	}
+	printf("\n");
+}
+
 // Show Tables
-//> Falta agregar el aparatado de campos mostrar la tabla, mostrara el formato que tiene viendose como una talba mostrando nombre del campo, logitud y tipo de dato, checar el formato esta imprimiendo algo extraño.
 void mostrarTabla(BaseDatos *base, char *nombreTabla)
 {
 	Tabla *tabla = buscarTablaEnBd(base, nombreTabla);
@@ -103,17 +177,7 @@ void mostrarTabla(BaseDatos *base, char *nombreTabla)
 	}
 
 	printf("Tabla: %s\n", tabla->nombre);
-	printf("Campos: %d\n", tabla->numCampos);
-	Campo *campoActual = tabla->campos;
-	while (campoActual != NULL)
-	{
-		printf(" - %s (%d) ", campoActual->nombre, campoActual->longitud);
-		if (campoActual->tipo == ENTERO)
-			printf("[ENTERO]\n");
-		else if (campoActual->tipo == VARCHAR)
-			printf("[VARCHAR]\n");
-		campoActual = campoActual->siguiente;
-	}
+	mostrarCampos(tabla);
 
 	printf("Registros: %d\n", tabla->numRegistros);
 	Registro *registroActual = tabla->registros;

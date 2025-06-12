@@ -181,7 +181,35 @@ void mostrarTabla(BaseDatos *base, char *nombreTabla)
 };
 
 // Add Record
-//> Falta agregar la solicitud de el numero de registros a hacer, se usara un buicle para agregar varios registros
+void agregarRegistroDatos(Tabla *tabla, Registro *nuevoRegistro)
+{
+	if (tabla == NULL || nuevoRegistro == NULL)
+	{
+		printf("Tabla o registro no valido.\n");
+		return;
+	}
+
+	if (tabla->registros == NULL)
+	{
+		tabla->registros = nuevoRegistro;
+		nuevoRegistro->anterior = NULL;
+	}
+
+	else
+	{
+		Registro *ultimoRegistro = tabla->registros;
+		while (ultimoRegistro->siguiente != NULL)
+		{
+			ultimoRegistro = ultimoRegistro->siguiente;
+		}
+		ultimoRegistro->siguiente = nuevoRegistro;
+		nuevoRegistro->anterior = ultimoRegistro;
+	}
+
+	tabla->numRegistros++;
+	nuevoRegistro->siguiente = NULL;
+}
+
 void añadirRegistro(BaseDatos *base, char *nombreTabla)
 {
 	Tabla *tabla = buscarTablaEnBd(base, nombreTabla);
@@ -191,32 +219,38 @@ void añadirRegistro(BaseDatos *base, char *nombreTabla)
 		return;
 	}
 
-	Registro *nuevoRegistro = (Registro *)malloc(sizeof(Registro));
-	nuevoRegistro->datos = (void **)malloc(tabla->numCampos * sizeof(void *));
-	for (int i = 0; i < tabla->numCampos; i++)
-	{
-		nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
-		printf("Ingrese el valor para el campo '%s': ", tabla->campos[i].nombre);
-		scanf("%s", (char *)nuevoRegistro->datos[i]);
-	}
-	nuevoRegistro->siguiente = NULL;
+	printf("Ingrese el numero de nuevos registros a agregar: ");
+	int numNuevosRegistros, contador = 1;
+	scanf("%d", &numNuevosRegistros);
 
-	if (tabla->registros == NULL)
+	if (numNuevosRegistros <= 0)
 	{
-		tabla->registros = nuevoRegistro;
-		nuevoRegistro->anterior = NULL;
-	}
-	else
-	{
-		Registro *ultimoRegistro = tabla->registros;
-		while (ultimoRegistro->siguiente != NULL)
-			ultimoRegistro = ultimoRegistro->siguiente;
-
-		ultimoRegistro->siguiente = nuevoRegistro;
-		nuevoRegistro->anterior = ultimoRegistro;
+		printf("El numero de nuevos registros debe ser mayor que 0.\n");
+		return;
 	}
 
-	tabla->numRegistros++;
+	while (numNuevosRegistros-- > 0)
+	{
+		Registro *nuevoRegistro = (Registro *)malloc(sizeof(Registro));
+		nuevoRegistro->datos = (void **)malloc(tabla->numCampos * sizeof(void *));
+		for (int i = 0; i < tabla->numCampos; i++)
+		{
+			nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
+			printf("Ingrese el valor para el campo '%s' (tipo %s) del registro numero %d: ", tabla->campos[i].nombre, (tabla->campos[i].tipo == ENTERO) ? "ENTERO" : "VARCHAR", contador);
+			if (tabla->campos[i].tipo == ENTERO)
+			{
+				int valor;
+				scanf("%d", &valor);
+				sprintf((char *)nuevoRegistro->datos[i], "%d", valor);
+			}
+			else if (tabla->campos[i].tipo == VARCHAR)
+			{
+				scanf("%s", (char *)nuevoRegistro->datos[i]);
+			}
+		}
+		agregarRegistroDatos(tabla, nuevoRegistro);
+		contador++;
+	}
 };
 
 // Show Records
@@ -230,17 +264,29 @@ void mostrarRegistros(BaseDatos *base, char *nombreTabla)
 	}
 
 	printf("Numero de registros en la tabla '%s': %d\n", tabla->nombre, tabla->numRegistros);
+	printf("Ingrese el numero de registros a mostrar (0 para mostrar todos): ");
+	int numRegistros;
+	scanf("%d", &numRegistros);
+
+	printf("\nTabla: %s\n", tabla->nombre);
 	printf("Registros en la tabla '%s':\n", tabla->nombre);
 	Registro *registroActual = tabla->registros;
-	while (registroActual != NULL)
+
+	if (numRegistros <= 0 || numRegistros > tabla->numRegistros)
+	{
+		numRegistros = tabla->numRegistros;
+	}
+
+	while (registroActual != NULL && numRegistros-- > 0)
 	{
 		for (int i = 0; i < tabla->numCampos; i++)
 		{
 			if (registroActual->datos[i] != NULL)
-				printf(" - %s: %s\n", tabla->campos[i].nombre, (char *)registroActual->datos[i]);
+				printf(" - %s: %s", tabla->campos[i].nombre, (char *)registroActual->datos[i]);
 			else
-				printf(" - %s: NULL\n", tabla->campos[i].nombre);
+				printf(" - %s: NULL", tabla->campos[i].nombre);
 		}
+		printf("\n");
 		registroActual = registroActual->siguiente;
 	}
 }

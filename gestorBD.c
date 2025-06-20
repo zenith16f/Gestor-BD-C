@@ -45,7 +45,7 @@ typedef struct
 //*Prototypes
 void agregarTabla(BaseDatos **base, char *nombreTabla);
 Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla);
-void cargarRegistrosDesdeArchivo(Tabla *tabla);
+void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo);
 void guardarRegistroEnArchivo(Tabla *tabla, Registro *registro);
 
 //* Fuctions
@@ -75,10 +75,22 @@ void inicializarDesdeArchivos(BaseDatos **base, const char *carpeta)
 			nombreTabla[strlen(nombreTabla) - 4] = '\0'; // Quitar ".txt"
 
 			// Crear tabla
-			agregarTabla(base, nombreTabla);
+			// agregarTabla(base, nombreTabla);
 
 			// Buscar tabla en base
 			Tabla *tabla = buscarTablaEnBd(*base, nombreTabla);
+
+			// Cargar estructura desde archivo .schema
+			char rutaSchema[256];
+			snprintf(rutaSchema, sizeof(rutaSchema), "%s/%s.schema", carpeta, nombreTabla);
+			if (access(rutaSchema, F_OK) == 0)
+			{
+				crearTablaDesdeSchema(base, nombreTabla, rutaSchema);
+			}
+			else
+			{
+				agregarTabla(base, nombreTabla); // Por si acaso no hay esquema
+			}
 
 			// Abrir archivo para contar campos
 			FILE *archivo = fopen(rutaArchivo, "r");
@@ -108,9 +120,8 @@ void inicializarDesdeArchivos(BaseDatos **base, const char *carpeta)
 
 				fclose(archivo);
 
-				// Cargar registros del archivo
-				//cargarRegistrosDesdeArchivo(tabla);
-				//printf("Tabla '%s' inicializada con %d campos desde archivo.\n", nombreTabla, campos);
+				cargarRegistrosDesdeArchivo(tabla, rutaArchivo);
+				printf("Tabla '%s' inicializada con %d campos desde archivo.\n", nombreTabla, campos);
 			}
 		}
 	}
@@ -184,6 +195,8 @@ void agregarTabla(BaseDatos **base, char *nombreTabla)
 
 	nuevaTabla->campos = (Campo *)malloc(numCampos * sizeof(Campo));
 	agregarCampos(base, nuevaTabla);
+
+	guardarEsquemaTabla(nuevaTabla);
 
 	nuevaTabla->registros = NULL;
 	nuevaTabla->numRegistros = 0;
@@ -271,7 +284,6 @@ void agregarRegistroDatos(Tabla *tabla, Registro *nuevoRegistro)
 		tabla->registros = nuevoRegistro;
 		nuevoRegistro->anterior = NULL;
 	}
-
 	else
 	{
 		Registro *ultimoRegistro = tabla->registros;
@@ -285,6 +297,9 @@ void agregarRegistroDatos(Tabla *tabla, Registro *nuevoRegistro)
 
 	tabla->numRegistros++;
 	nuevoRegistro->siguiente = NULL;
+
+	// DEBUG:
+	printf("[DEBUG] Registro agregado. Total: %d\n", tabla->numRegistros);
 }
 
 void anadirRegistro(BaseDatos *base, char *nombreTabla)
@@ -347,7 +362,7 @@ void mostrarRegistros(BaseDatos *base, char *nombreTabla)
 		printf("Tabla '%s' no encontrada.\n", nombreTabla);
 		return;
 	}
-
+	cargarRegistrosDesdeArchivo(base,nombreTabla);
 	printf("Numero de registros en la tabla '%s': %d\n", tabla->nombre, tabla->numRegistros);
 	printf("Ingrese el numero de registros a mostrar (0 para mostrar todos): ");
 	int numRegistros;
@@ -403,12 +418,186 @@ void guardarRegistroEnArchivo(Tabla *tabla, Registro *registro)
 	fclose(archivo);
 }
 
+void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema)
+{
+	if (tabla == NULL || rutaSchema == NULL)
+	{
+		printf("Tabla o ruta inválida.\n");
+		return;
+	}
+
+	FILE *archivo = fopen(rutaSchema, "r");
+	if (!archivo)
+	{
+		perror("No se pudo abrir el archivo de esquema");
+		return;
+	}
+
+	char linea[256];
+	int numCampos = 0;
+
+	// Primera pasada: contar cuántos campos hay
+	while (fgets(linea, sizeof(linea), archivo) != NULL)
+	{
+		numCampos++;
+	}
+	rewind(archivo); // Volver al inicio para volver a leer
+
+	// Asignar espacio a los campos
+	tabla->numCampos = numCampos;
+	tabla->campos = (Campo *)malloc(numCampos * sizeof(Campo));
+
+	for (int i = 0; i < numCampos; i++)
+	{
+		if (!fgets(linea, sizeof(linea), archivo))
+			break;
+
+		// Eliminar salto de línea
+		char *salto = strchr(linea, '\n');
+		if (salto)
+			*salto = '\0';
+
+		char *token = strtok(linea, ",");
+		if (!token)
+			continue;
+
+		tabla->campos[i].nombre = (char *)malloc(50);
+		strcpy(tabla->campos[i].nombre, token);
+
+		token = strtok(NULL, ",");
+		if (!token)
+			continue;
+		if (strcmp(token, "ENTERO") == 0)
+			tabla->campos[i].tipo = ENTERO;
+		else
+			tabla->campos[i].tipo = VARCHAR;
+
+		token = strtok(NULL, ",");
+		tabla->campos[i].longitud = token ? atoi(token) : 100;
+
+		tabla->campos[i].siguiente = (i < numCampos - 1) ? &tabla->campos[i + 1] : NULL;
+	}
+
+	fclose(archivo);
+	printf("Estructura de la tabla '%s' cargada correctamente.\n", tabla->nombre);
+}
+
+void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
+{
+	if (tabla == NULL)
+		return;
+
+	
+	sprintf(rutaArchivo, "%s.txt", tabla->nombre);
+
+	FILE *archivo = fopen(rutaArchivo, "r");
+
+	
+	if (!archivo)
+	{
+		perror("No se pudo abrir el archivo de registros");
+		return;
+	}
+
+
+	char linea[512];
+	// Leer la primera línea (encabezados)
+	if (!fgets(linea, sizeof(linea), archivo))
+	{
+		fclose(archivo);
+		return;
+	}
+
+	// Leer cada línea de registro
+	while (fgets(linea, sizeof(linea), archivo))
+	{
+		if (strlen(linea) <= 1)
+			continue; // Línea vacía
+
+		Registro *nuevoRegistro = (Registro *)malloc(sizeof(Registro));
+		nuevoRegistro->datos = (void **)malloc(tabla->numCampos * sizeof(void *));
+		nuevoRegistro->siguiente = NULL;
+		nuevoRegistro->anterior = NULL;
+
+		char *token = strtok(linea, ",\n");
+		for (int i = 0; i < tabla->numCampos && token != NULL; i++)
+		{
+			nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
+			strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud);
+			for (int i = 0; i < tabla->numCampos && token != NULL; i++)
+			{
+				nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
+				strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud);
+
+				token = strtok(NULL, ",\n");
+			}
+
+			token = strtok(NULL, ",\n");
+		}
+
+		agregarRegistroDatos(tabla, nuevoRegistro);
+	}
+
+	fclose(archivo);
+}
+
+void guardarEsquemaTabla(Tabla *tabla)
+{
+	if (!tabla || !tabla->campos)
+		return;
+
+	char archivo[100];
+	sprintf(archivo, "%s.schema", tabla->nombre); // archivo: nombreTabla.schema
+
+	FILE *f = fopen(archivo, "w");
+	if (!f)
+	{
+		perror("No se pudo guardar el esquema");
+		return;
+	}
+
+	Campo *c = tabla->campos;
+	while (c != NULL)
+	{
+		fprintf(f, "%s,%s,%d\n",
+				c->nombre,
+				(c->tipo == ENTERO) ? "ENTERO" : "VARCHAR",
+				c->longitud);
+		c = c->siguiente;
+	}
+
+	fclose(f);
+	printf("Esquema de tabla '%s' guardado en %s\n", tabla->nombre, archivo);
+}
+
+void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char *rutaSchema)
+{
+	if (*base == NULL)
+	{
+		*base = (BaseDatos *)malloc(sizeof(BaseDatos));
+		(*base)->tablas = NULL;
+		(*base)->numTablas = 0;
+	}
+
+	Tabla *nuevaTabla = (Tabla *)malloc(sizeof(Tabla));
+	strcpy(nuevaTabla->nombre, nombreTabla);
+
+	// Cargar estructura
+	cargarEstructuraDesdeArchivo(nuevaTabla, rutaSchema);
+
+	nuevaTabla->registros = NULL;
+	nuevaTabla->numRegistros = 0;
+	nuevaTabla->siguiente = (*base)->tablas;
+	(*base)->tablas = nuevaTabla;
+	(*base)->numTablas++;
+}
+
 //* Main
 int main()
 {
 	// Variables
 	BaseDatos *baseDatos = NULL;
-	inicializarDesdeArchivos(&baseDatos, "output");
+	inicializarDesdeArchivos(&baseDatos, ".");
 	int opcion, continuar = 1;
 
 	printf("Bienvenido al Gestor de Base de Datos\n");

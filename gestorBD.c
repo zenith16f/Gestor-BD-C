@@ -229,8 +229,7 @@ Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla)
 }
 
 // Show Fields
-void mostrarCampos(Tabla *tabla)
-{
+void mostrarCampos(Tabla *tabla){
 	if (tabla == NULL)
 	{
 		printf("Tabla no encontrada.\n");
@@ -257,14 +256,17 @@ void mostrarCampos(Tabla *tabla)
 }
 
 // Show Tables
-void mostrarTabla(BaseDatos *base, char *nombreTabla)
-{
+void mostrarTabla(BaseDatos *base, char *nombreTabla){
 	Tabla *tabla = buscarTablaEnBd(base, nombreTabla);
 	if (tabla == NULL)
 	{
 		printf("Tabla '%s' no encontrada.\n", nombreTabla);
 		return;
 	}
+
+	char rutaArchivo[100];
+	sprintf(rutaArchivo, "%s.txt", nombreTabla);
+	cargarRegistrosDesdeArchivo(tabla, rutaArchivo);
 
 	printf("Tabla: %s\n", tabla->nombre);
 	mostrarCampos(tabla);
@@ -297,9 +299,6 @@ void agregarRegistroDatos(Tabla *tabla, Registro *nuevoRegistro)
 
 	tabla->numRegistros++;
 	nuevoRegistro->siguiente = NULL;
-
-	// DEBUG:
-	printf("[DEBUG] Registro agregado. Total: %d\n", tabla->numRegistros);
 }
 
 void anadirRegistro(BaseDatos *base, char *nombreTabla)
@@ -362,7 +361,12 @@ void mostrarRegistros(BaseDatos *base, char *nombreTabla)
 		printf("Tabla '%s' no encontrada.\n", nombreTabla);
 		return;
 	}
-	cargarRegistrosDesdeArchivo(base,nombreTabla);
+
+	char rutaArchivo[100];
+	sprintf(rutaArchivo, "%s.txt", nombreTabla);
+	limpiarRegistros(tabla);
+	cargarRegistrosDesdeArchivo(tabla, rutaArchivo);
+
 	printf("Numero de registros en la tabla '%s': %d\n", tabla->nombre, tabla->numRegistros);
 	printf("Ingrese el numero de registros a mostrar (0 para mostrar todos): ");
 	int numRegistros;
@@ -390,6 +394,7 @@ void mostrarRegistros(BaseDatos *base, char *nombreTabla)
 		registroActual = registroActual->siguiente;
 	}
 }
+
 // Archives
 void guardarRegistroEnArchivo(Tabla *tabla, Registro *registro)
 {
@@ -418,8 +423,7 @@ void guardarRegistroEnArchivo(Tabla *tabla, Registro *registro)
 	fclose(archivo);
 }
 
-void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema)
-{
+void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema){
 	if (tabla == NULL || rutaSchema == NULL)
 	{
 		printf("Tabla o ruta inválida.\n");
@@ -482,32 +486,19 @@ void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema)
 	printf("Estructura de la tabla '%s' cargada correctamente.\n", tabla->nombre);
 }
 
-void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
-{
+void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo){
 	if (tabla == NULL)
 		return;
 
-	
-	sprintf(rutaArchivo, "%s.txt", tabla->nombre);
-
 	FILE *archivo = fopen(rutaArchivo, "r");
 
-	
 	if (!archivo)
 	{
 		perror("No se pudo abrir el archivo de registros");
 		return;
 	}
 
-
 	char linea[512];
-	// Leer la primera línea (encabezados)
-	if (!fgets(linea, sizeof(linea), archivo))
-	{
-		fclose(archivo);
-		return;
-	}
-
 	// Leer cada línea de registro
 	while (fgets(linea, sizeof(linea), archivo))
 	{
@@ -524,14 +515,6 @@ void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
 		{
 			nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
 			strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud);
-			for (int i = 0; i < tabla->numCampos && token != NULL; i++)
-			{
-				nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
-				strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud);
-
-				token = strtok(NULL, ",\n");
-			}
-
 			token = strtok(NULL, ",\n");
 		}
 
@@ -541,8 +524,9 @@ void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
 	fclose(archivo);
 }
 
-void guardarEsquemaTabla(Tabla *tabla)
-{
+// Tables
+
+void guardarEsquemaTabla(Tabla *tabla){
 	if (!tabla || !tabla->campos)
 		return;
 
@@ -570,8 +554,7 @@ void guardarEsquemaTabla(Tabla *tabla)
 	printf("Esquema de tabla '%s' guardado en %s\n", tabla->nombre, archivo);
 }
 
-void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char *rutaSchema)
-{
+void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char *rutaSchema){
 	if (*base == NULL)
 	{
 		*base = (BaseDatos *)malloc(sizeof(BaseDatos));
@@ -592,8 +575,26 @@ void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char
 	(*base)->numTablas++;
 }
 
+//Clean
+void limpiarRegistros(Tabla *tabla) {
+	if (!tabla || !tabla->registros) return;
+
+	Registro *actual = tabla->registros;
+	while (actual) {
+		Registro *siguiente = actual->siguiente;
+		for (int i = 0; i < tabla->numCampos; i++) {
+			free(actual->datos[i]);
+		}
+		free(actual->datos);
+		free(actual);
+		actual = siguiente;
+	}
+	tabla->registros = NULL;
+	tabla->numRegistros = 0;
+}
+
 //* Main
-int main()
+void main()
 {
 	// Variables
 	BaseDatos *baseDatos = NULL;
@@ -664,5 +665,4 @@ int main()
 			}
 		}
 	}
-	return 0;
 }

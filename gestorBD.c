@@ -229,7 +229,8 @@ Tabla *buscarTablaEnBd(BaseDatos *base, char *nombreTabla)
 }
 
 // Show Fields
-void mostrarCampos(Tabla *tabla){
+void mostrarCampos(Tabla *tabla)
+{
 	if (tabla == NULL)
 	{
 		printf("Tabla no encontrada.\n");
@@ -256,7 +257,8 @@ void mostrarCampos(Tabla *tabla){
 }
 
 // Show Tables
-void mostrarTabla(BaseDatos *base, char *nombreTabla){
+void mostrarTabla(BaseDatos *base, char *nombreTabla)
+{
 	Tabla *tabla = buscarTablaEnBd(base, nombreTabla);
 	if (tabla == NULL)
 	{
@@ -423,7 +425,8 @@ void guardarRegistroEnArchivo(Tabla *tabla, Registro *registro)
 	fclose(archivo);
 }
 
-void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema){
+void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema)
+{
 	if (tabla == NULL || rutaSchema == NULL)
 	{
 		printf("Tabla o ruta inválida.\n");
@@ -486,7 +489,8 @@ void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema){
 	printf("Estructura de la tabla '%s' cargada correctamente.\n", tabla->nombre);
 }
 
-void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo){
+void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
+{
 	if (tabla == NULL)
 		return;
 
@@ -505,16 +509,23 @@ void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo){
 		if (strlen(linea) <= 1)
 			continue; // Línea vacía
 
+		linea[strcspn(linea, "\r\n")] = '\0'; // Elimina \r o \n si están presentes
+
 		Registro *nuevoRegistro = (Registro *)malloc(sizeof(Registro));
 		nuevoRegistro->datos = (void **)malloc(tabla->numCampos * sizeof(void *));
 		nuevoRegistro->siguiente = NULL;
 		nuevoRegistro->anterior = NULL;
 
-		char *token = strtok(linea, ",\n");
+		char *token = strtok(linea, ",\r\n");
 		for (int i = 0; i < tabla->numCampos && token != NULL; i++)
 		{
 			nuevoRegistro->datos[i] = malloc(tabla->campos[i].longitud * sizeof(char));
-			strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud);
+			strncpy((char *)nuevoRegistro->datos[i], token, tabla->campos[i].longitud - 1);
+			((char *)nuevoRegistro->datos[i])[tabla->campos[i].longitud - 1] = '\0';
+
+			char *p = (char *)nuevoRegistro->datos[i];
+			p[strcspn(p, "\r\n")] = '\0';
+
 			token = strtok(NULL, ",\n");
 		}
 
@@ -526,7 +537,8 @@ void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo){
 
 // Tables
 
-void guardarEsquemaTabla(Tabla *tabla){
+void guardarEsquemaTabla(Tabla *tabla)
+{
 	if (!tabla || !tabla->campos)
 		return;
 
@@ -554,7 +566,8 @@ void guardarEsquemaTabla(Tabla *tabla){
 	printf("Esquema de tabla '%s' guardado en %s\n", tabla->nombre, archivo);
 }
 
-void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char *rutaSchema){
+void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char *rutaSchema)
+{
 	if (*base == NULL)
 	{
 		*base = (BaseDatos *)malloc(sizeof(BaseDatos));
@@ -575,14 +588,18 @@ void crearTablaDesdeSchema(BaseDatos **base, const char *nombreTabla, const char
 	(*base)->numTablas++;
 }
 
-//Clean
-void limpiarRegistros(Tabla *tabla) {
-	if (!tabla || !tabla->registros) return;
+// Clean
+void limpiarRegistros(Tabla *tabla)
+{
+	if (!tabla || !tabla->registros)
+		return;
 
 	Registro *actual = tabla->registros;
-	while (actual) {
+	while (actual)
+	{
 		Registro *siguiente = actual->siguiente;
-		for (int i = 0; i < tabla->numCampos; i++) {
+		for (int i = 0; i < tabla->numCampos; i++)
+		{
 			free(actual->datos[i]);
 		}
 		free(actual->datos);

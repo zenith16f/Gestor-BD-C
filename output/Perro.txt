@@ -8,3 +8,6 @@ Thor,Husky Siberiano,0,Macho
 Maya,Doberman,5,Hembra
 Bruno,Boxer,3,Macho
 Sasha,Pastor Aleman,0,Hembra
+Lassie,Border Collie,2,Hembra
+Scooby Doo,Gran Danes,1,Macho
+Snoopy,Beagle,1,Macho

@@ -8,3 +8,6 @@ El Hobbit,J.R.R. Tolkien,9780261102217
 Orgullo y Prejuicio,Jane Austen,9780141439518
 Los Juegos del Hambre,Suzanne Collins,9780439023528
 Crimen y Castigo,Fyodor Dostoevsky,9780140449136
+Generacion X,Douglas Coupland,70312054366
+Cien a�os de soledad ,Gabriel Garcia Marquez,780060740450
+El principe idiota,Fiodor Dostoyevski,788437635675

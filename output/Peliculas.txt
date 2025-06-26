@@ -8,3 +8,6 @@ Interestelar,Christopher Nolan,2014
 Joker,Todd Phillips,2019
 Pulp Fiction,Quentin Tarantino,1994
 La La Land,Damien Chazelle,2016
+El club de la pelea,David Fincher,1999
+28 dias despues,Danny Boyle,2002
+Los pajaros,Alfred Hitchcock,1963

@@ -55,12 +55,6 @@ void inicializarDesdeArchivos(BaseDatos **base, const char *carpeta)
 	DIR *dir;
 	struct dirent *ent;
 
-	if ((dir = opendir(carpeta)) == NULL)
-	{
-		perror("No se pudo abrir la carpeta de output");
-		return;
-	}
-
 	while ((ent = readdir(dir)) != NULL)
 	{
 		// Filtrar archivos .txt
@@ -73,9 +67,6 @@ void inicializarDesdeArchivos(BaseDatos **base, const char *carpeta)
 			char nombreTabla[50];
 			strncpy(nombreTabla, ent->d_name, sizeof(nombreTabla));
 			nombreTabla[strlen(nombreTabla) - 4] = '\0'; // Quitar ".txt"
-
-			// Crear tabla
-			// agregarTabla(base, nombreTabla);
 
 			// Buscar tabla en base
 			Tabla *tabla = buscarTablaEnBd(*base, nombreTabla);
@@ -491,8 +482,6 @@ void cargarEstructuraDesdeArchivo(Tabla *tabla, const char *rutaSchema)
 
 void cargarRegistrosDesdeArchivo(Tabla *tabla, const char *rutaArchivo)
 {
-	if (tabla == NULL)
-		return;
 
 	FILE *archivo = fopen(rutaArchivo, "r");
 

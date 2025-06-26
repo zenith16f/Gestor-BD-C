@@ -8,3 +8,6 @@ Audifonos Sony WH-1000XM4,5800,3,Audifonos con cancelacion de ruido
 Libreta profesional A4,120,30,Libreta de hojas rayadas con espiral
 Memoria USB 64GB,230,25,Dispositivo de almacenamiento portatil
 Lampara LED de escritorio,980,8,Lampara flexible con intensidad ajustable
+Pantalones,300,100,Pantalones cargo negro con bolsas
+Iphone 16,25000,10,Iphone mas reciente
+Oso teddy,2000,100,Oso de peluche infantil
